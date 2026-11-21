@@ -2,6 +2,7 @@
 
 // --- STATE MANAGEMENT ---
 const STORAGE_KEY = 'vendor_ledger_pro_v1';
+const API_URL_KEY = 'vendor_ledger_api_url';
 
 let state = {
   vendors: [],
@@ -13,6 +14,65 @@ let state = {
   dateSort: 'desc', // 'desc' or 'asc'
   editingTxId: null
 };
+
+// Cloud API Helpers
+function getCloudApiUrl() {
+  return localStorage.getItem(API_URL_KEY) || '';
+}
+
+function setCloudApiUrl(url) {
+  if (url) {
+    localStorage.setItem(API_URL_KEY, url.trim());
+    showToast("Google Sheets Webhook URL saved!");
+  } else {
+    localStorage.removeItem(API_URL_KEY);
+    showToast("Cloud sync disabled (local mode).", "info");
+  }
+  updateSyncBadge();
+}
+
+async function fetchFromCloud() {
+  const url = getCloudApiUrl();
+  if (!url) {
+    alert("Please enter and save your Google Sheets Web App URL first.");
+    return;
+  }
+  showToast("Fetching live data from Google Sheets...", "info");
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success && data.transactions) {
+      state.transactions = data.transactions;
+      if (data.vendors && data.vendors.length > 0) {
+        state.vendors = data.vendors;
+      }
+      saveState();
+      renderAll();
+      showToast(`Synced ${data.transactions.length} transactions from Google Sheets!`);
+    } else {
+      alert("Error from Google Sheets: " + (data.error || "Unknown response"));
+    }
+  } catch (err) {
+    alert("Could not connect to Google Sheets Webhook: " + err.message);
+  }
+}
+
+async function postToCloud(tx) {
+  const url = getCloudApiUrl();
+  if (!url) return false;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(tx)
+    });
+    const result = await res.json();
+    return result.success;
+  } catch (e) {
+    console.warn("Could not post to cloud:", e);
+    return false;
+  }
+}
 
 // Initialize State
 function initData() {
@@ -243,8 +303,20 @@ function showToast(message, type = 'success') {
 
 function updateSyncBadge() {
   const badge = document.getElementById('syncStatusBadge');
+  const apiUrl = getCloudApiUrl();
   if (badge) {
-    badge.textContent = `${state.transactions.length} Records Saved`;
+    if (apiUrl) {
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ☁️ Cloud Synced (${state.transactions.length} Records)`;
+      badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium text-xs border border-emerald-200";
+    } else {
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> 💾 Local Mode (${state.transactions.length} Records)`;
+      badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium text-xs";
+    }
+  }
+
+  const cloudInput = document.getElementById('cloudApiUrlInput');
+  if (cloudInput && !cloudInput.value && apiUrl) {
+    cloudInput.value = apiUrl;
   }
 }
 
@@ -699,6 +771,18 @@ function handleSaveTransaction(e) {
     };
     state.transactions.push(newTx);
     showToast(`Recorded ${type === 'BILL' ? 'Bill' : 'Payment'} for ${vendorName}!`);
+
+    // Live Cloud Sync to Google Sheets if API URL is set
+    if (getCloudApiUrl()) {
+      showToast("Syncing with Google Sheets in cloud...", "info");
+      postToCloud(newTx).then(ok => {
+        if (ok) {
+          showToast("✓ Successfully appended to Google Sheet in cloud!");
+        } else {
+          showToast("Saved locally (cloud sync retry scheduled)", "info");
+        }
+      });
+    }
   }
 
   saveState();

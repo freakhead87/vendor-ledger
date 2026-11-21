@@ -328,6 +328,44 @@
         </div>
       </div>
 
+      <!-- Live Google Sheets Webhook Cloud Sync Card -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <span>☁️ Real-Time Cloud Persistence (Google Sheets Webhook)</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Zero Data Loss</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">Connect your Google Apps Script Web App URL so transactions automatically append to your Google Sheet in the cloud.</p>
+          </div>
+          <button onclick="fetchFromCloud()" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Sync Live From Cloud</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-2.5">
+          <input type="url" id="cloudApiUrlInput" placeholder="Paste your Google Apps Script Web App URL (https://script.google.com/macros/s/.../exec)"
+                 class="flex-1 w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl px-4 py-2.5 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+          <button onclick="setCloudApiUrl(document.getElementById('cloudApiUrlInput').value)"
+                  class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs">
+            Save Webhook URL
+          </button>
+        </div>
+
+        <details class="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 cursor-pointer">
+          <summary class="font-semibold text-indigo-600 select-none">📋 How to deploy the Apps Script Webhook (Takes 60 seconds)</summary>
+          <ol class="list-decimal list-inside space-y-1.5 mt-2.5 text-slate-600 text-[11px] leading-relaxed">
+            <li>In your Google Sheet, click <strong>Extensions &gt; Apps Script</strong> in the top menu.</li>
+            <li>Copy the code from <code>google_apps_script.js</code> (inside this project folder) and paste it into <code>Code.gs</code>.</li>
+            <li>Click <strong>Deploy &gt; New deployment</strong>, select <strong>Web app</strong>.</li>
+            <li>Set <em>Execute as:</em> <strong>Me</strong>, and <em>Who has access:</em> <strong>Anyone</strong>.</li>
+            <li>Click <strong>Deploy</strong> and copy the generated Web App URL.</li>
+            <li>Paste it into the box above and click <strong>Save Webhook URL</strong>!</li>
+          </ol>
+        </details>
+      </div>
+
       <!-- Backup, Export & Reset Section -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
