@@ -22,7 +22,11 @@ function getCloudApiUrl() {
 
 function setCloudApiUrl(url) {
   if (url) {
-    localStorage.setItem(API_URL_KEY, url.trim());
+    url = url.trim();
+    if (url.includes('/edit') || url.includes('/home')) {
+      alert("⚠️ Warning: You pasted the Apps Script editor URL (/edit).\nPlease deploy it as a Web App (Deploy > New deployment > Web app) and paste the URL ending in /exec.");
+    }
+    localStorage.setItem(API_URL_KEY, url);
     showToast("Google Sheets Webhook URL saved!");
   } else {
     localStorage.removeItem(API_URL_KEY);
@@ -35,6 +39,10 @@ async function fetchFromCloud() {
   const url = getCloudApiUrl();
   if (!url) {
     alert("Please enter and save your Google Sheets Web App URL first.");
+    return;
+  }
+  if (url.includes('/edit') || url.includes('/home')) {
+    alert("The saved URL appears to be the Apps Script editor link. Please use the deployed Web App URL ending in /exec.");
     return;
   }
   showToast("Fetching live data from Google Sheets...", "info");
@@ -53,7 +61,7 @@ async function fetchFromCloud() {
       alert("Error from Google Sheets: " + (data.error || "Unknown response"));
     }
   } catch (err) {
-    alert("Could not connect to Google Sheets Webhook: " + err.message);
+    alert("Could not connect to Google Sheets Webhook: " + err.message + "\n\nTroubleshooting Steps:\n1. Ensure 'Who has access' was set to 'Anyone' in your Apps Script deployment.\n2. Ensure your Web App URL ends in '/exec'.\n3. In Google Sheet, go to Deploy > Manage deployments and verify the active version.");
   }
 }
 
@@ -61,15 +69,41 @@ async function postToCloud(tx) {
   const url = getCloudApiUrl();
   if (!url) return false;
   try {
+    const payload = Object.assign({ action: 'add' }, tx);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(tx)
+      body: JSON.stringify(payload)
     });
     const result = await res.json();
     return result.success;
   } catch (e) {
     console.warn("Could not post to cloud:", e);
+    return false;
+  }
+}
+
+async function deleteFromCloud(tx) {
+  const url = getCloudApiUrl();
+  if (!url) return false;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'delete',
+        vendor: tx.vendor,
+        sNo: tx.sNo,
+        rowNumber: tx.rowNumber,
+        dateBS: tx.dateBS,
+        billDr: tx.billDr,
+        paymentCr: tx.paymentCr
+      })
+    });
+    const result = await res.json();
+    return result.success;
+  } catch (e) {
+    console.warn("Could not delete from cloud:", e);
     return false;
   }
 }
@@ -821,11 +855,25 @@ function editTransaction(id) {
 }
 
 function deleteTransaction(id) {
-  if (confirm("Are you sure you want to delete this transaction record?")) {
+  const targetTx = state.transactions.find(t => t.id === id);
+  if (!targetTx) return;
+
+  if (confirm(`Are you sure you want to delete this record for ${targetTx.vendor}?`)) {
     state.transactions = state.transactions.filter(t => t.id !== id);
     saveState();
     renderAll();
-    showToast("Transaction deleted.", "info");
+    showToast("Transaction deleted locally.", "info");
+
+    if (getCloudApiUrl()) {
+      showToast("Deleting row from Google Sheets...", "info");
+      deleteFromCloud(targetTx).then(ok => {
+        if (ok) {
+          showToast("✓ Row deleted from Google Sheet!");
+        } else {
+          showToast("Could not delete from Google Sheet (check webhook).", "error");
+        }
+      });
+    }
   }
 }
 
