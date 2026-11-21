@@ -4,7 +4,46 @@ A dedicated, fast, offline-ready web application designed for managing **Vendor 
 
 ---
 
-## 🚀 Quick Start (Two Ways to Open)
+## ☁️ Online Deployment (GitHub + Cloudflare Pages)
+
+To host this web application online with global access and zero data loss:
+
+### 1. Push to Your GitHub Account
+Open PowerShell in this directory:
+```powershell
+cd "C:\Users\Freakillaz Inc\.gemini\antigravity\scratch\vendor-bills-app"
+
+# 1. Create a new empty repository on GitHub: https://github.com/new (e.g. named "vendor-ledger")
+# 2. Link your local repo to GitHub:
+git remote add origin https://github.com/<your-github-username>/vendor-ledger.git
+
+# 3. Push to main:
+git push -u origin main
+```
+
+### 2. Deploy on Cloudflare Pages (Free & Automatic)
+1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com/).
+2. In the sidebar, navigate to **Compute (Workers) & Pages** → **Create application** → **Pages** → **Connect to Git**.
+3. Select your `vendor-ledger` GitHub repository.
+4. Set **Build command**: *(leave blank)*
+5. Set **Build output directory**: `/` (or leave default root).
+6. Click **Save and Deploy**. Cloudflare gives you a live HTTPS domain (e.g. `https://vendor-ledger.pages.dev`).
+7. Every time you make a git commit, Cloudflare Pages automatically updates the live site in seconds!
+
+### 3. Connect Live Google Sheets Cloud Sync (Zero Data Loss)
+1. Open your Google Spreadsheet: [Master File - Vendor Bills vs Payment](https://docs.google.com/spreadsheets/d/1zWKy_Zypr9Uday4VsqrqwSeQwTrAz5_X3Ijo8l9pJxw/edit).
+2. Click **Extensions > Apps Script** in the top menu.
+3. Open `google_apps_script.js` from this folder, copy all code, and paste it into `Code.gs`.
+4. Click **Deploy > New deployment** → Select type **Web app**.
+   * Execute as: **Me**
+   * Who has access: **Anyone**
+5. Copy the generated Web App URL (`https://script.google.com/macros/s/.../exec`).
+6. In your online web app, go to **Sheets & Sync** and paste your Web App URL.
+7. Any bill or payment recorded in the web app will now instantly save straight to your Google Sheet in Google Drive!
+
+---
+
+## 🚀 Local Quick Start (Two Ways to Open Locally)
 
 ### Option 1: Instant Direct Launch (No Terminal Needed)
 Simply double-click **`index.html`** or right-click → **Open with Chrome / Brave / Edge**.
@@ -53,7 +92,7 @@ Open PowerShell in this directory and run:
 
 6. **Backup, Portability & Google Sheets Sync:**
    * One-click **JSON Backup** and **Restore**.
-   * Run `.\sync-to-sheets.ps1 -BackupJsonFile backup.json` to push newly recorded web entries straight into your Google Sheets workbook!
+   * Run `.\sync-to-sheets.ps1 -BackupJsonFile backup.json` to push newly recorded web entries straight into your Google Sheets workbook.
 
 ---
 
@@ -64,9 +103,11 @@ vendor-bills-app/
 ├── index.html             # Main single-page web app (Tailwind CSS, responsive layout)
 ├── app.js                 # State store, BS-AD calendar engine, UI renderers, live calculators
 ├── data.js                # Initial master data seed (69 historical txns + BS reference)
+├── google_apps_script.js  # Google Sheets Webhook API code for real-time cloud persistence
 ├── start-server.ps1       # Native Windows PowerShell HTTP server script
 ├── sync-to-sheets.ps1     # Google Sheets synchronization script
 ├── initial_data.json      # Structured snapshot extracted from Google Sheets
 ├── bs_calendar.json       # Extracted BS calendar conversion lookup
-└── README.md              # Documentation & user guide
+├── .gitignore             # Standard git ignore file
+└── README.md              # Documentation & online deployment guide
 ```
