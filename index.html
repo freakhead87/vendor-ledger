@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendorLedger Pro • Bills & Payment Management</title>
+  <!-- Tailwind CSS -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 antialiased flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & App Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-100">
+          VL
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base text-slate-900 tracking-tight">VendorLedger Pro</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Live Active</span>
+          </div>
+          <p class="text-xs text-slate-500">Master Vendor Bills vs Payment Tracking</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <button id="tab-dashboard" onclick="switchTab('dashboard')" class="nav-tab px-4 py-1.5 rounded-lg font-semibold text-xs bg-white text-indigo-600 shadow-xs transition">
+          📊 Executive Dashboard
+        </button>
+        <button id="tab-ledger" onclick="switchTab('ledger')" class="nav-tab px-4 py-1.5 rounded-lg font-medium text-xs text-slate-600 hover:text-slate-900 transition">
+          📑 Master Ledger
+        </button>
+        <button id="tab-sync" onclick="switchTab('sync')" class="nav-tab px-4 py-1.5 rounded-lg font-medium text-xs text-slate-600 hover:text-slate-900 transition">
+          🔄 Sheets & Sync
+        </button>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2.5">
+        <a href="https://docs.google.com/spreadsheets/d/1zWKy_Zypr9Uday4VsqrqwSeQwTrAz5_X3Ijo8l9pJxw/edit#gid=1230991294" target="_blank"
+           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs transition">
+          <span>Sheets</span>
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+
+        <button onclick="openRecordModal()"
+                class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md shadow-indigo-200 transition active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Record Data</span>
+          <span class="hidden lg:inline text-[10px] bg-indigo-500/50 px-1.5 py-0.5 rounded font-mono">Ctrl+N</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ================= VIEW 1: EXECUTIVE DASHBOARD ================= -->
+    <div id="panel-dashboard" class="view-panel space-y-6">
+
+      <!-- Filter & Context Bar -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Account Scope:</label>
+          <select id="dashVendorSelect" onchange="setVendorFilter(this.value)"
+                  class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span id="syncStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Synced with Master File
+          </span>
+          <span id="dashTxCount" class="font-mono text-slate-600 font-semibold">69 Txns</span>
+        </div>
+      </div>
+
+      <!-- Hero KPI Metrics Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Invoiced Dr -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-indigo-200 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">Total Billed (Dr)</span>
+            <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">₹</span>
+          </div>
+          <div id="dashBilled" class="text-2xl font-bold text-slate-900 mt-2 font-mono">NPR 1,074,926</div>
+          <p id="dashBilledSub" class="text-xs text-slate-400 mt-1 truncate">All 5 vendor accounts</p>
+        </div>
+
+        <!-- Total Settled Cr -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-200 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">Total Paid (Cr)</span>
+            <span class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">✓</span>
+          </div>
+          <div id="dashPaid" class="text-2xl font-bold text-emerald-600 mt-2 font-mono">NPR 742,066</div>
+          <p id="dashPaidSub" class="text-xs text-slate-400 mt-1 truncate">Settlement funds released</p>
+        </div>
+
+        <!-- Outstanding Due -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-rose-200 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">Outstanding Balance Due</span>
+            <span class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm">!</span>
+          </div>
+          <div id="dashDue" class="text-2xl font-bold text-rose-600 mt-2 font-mono">NPR 332,860</div>
+          <p id="dashDueSub" class="text-xs text-slate-400 mt-1 truncate">Pending payment balance</p>
+        </div>
+
+        <!-- Fulfillment Ratio -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-sky-200 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">Settlement Fulfillment</span>
+            <span class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-sm">%</span>
+          </div>
+          <div id="dashRate" class="text-2xl font-bold text-sky-600 mt-2 font-mono">69.0%</div>
+          <div class="w-full bg-slate-100 h-2 rounded-full mt-2.5 overflow-hidden">
+            <div id="dashRateBar" class="bg-sky-500 h-full rounded-full transition-all duration-700" style="width: 69%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Visual Section: Chart & Vendor Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Monthly Billed vs Paid Timeline Chart -->
+        <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-sm text-slate-900">Bikram Sambat (BS) Monthly Trends</h3>
+                <p class="text-xs text-slate-500">Comparison of Invoices Billed (Dr) vs Settlements Paid (Cr)</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs">
+                <span class="flex items-center gap-1.5 text-slate-600">
+                  <span class="w-3 h-3 rounded bg-indigo-500"></span> Billed Dr
+                </span>
+                <span class="flex items-center gap-1.5 text-slate-600">
+                  <span class="w-3 h-3 rounded bg-emerald-500"></span> Paid Cr
+                </span>
+              </div>
+            </div>
+
+            <!-- Chart Canvas Bars -->
+            <div id="chartBars" class="h-48 flex items-end justify-between gap-1.5 pt-4 border-b border-slate-100">
+              <!-- Populated by JS -->
+            </div>
+            <div id="chartLabels" class="flex justify-between pt-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Hover over any month column to inspect exact NPR figures</span>
+            <button onclick="openRecordModal()" class="text-indigo-600 hover:text-indigo-800 font-semibold">+ Log New Invoice</button>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold text-sm text-slate-900">Recent Transactions</h3>
+              <button onclick="switchTab('ledger')" class="text-xs text-indigo-600 hover:underline font-medium">View All →</button>
+            </div>
+            <div id="recentActivityList" class="divide-y divide-slate-100">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+            <button onclick="openRecordModal()" class="w-full py-2 rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs font-semibold transition">
+              + Record Another Entry
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vendor Portfolio Breakdown Cards -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900">Vendor Account Ledger Cards</h3>
+            <p class="text-xs text-slate-500">Click any card to isolate dashboard metrics to that vendor</p>
+          </div>
+          <button onclick="openAddVendorModal()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition">
+            + New Vendor Account
+          </button>
+        </div>
+
+        <div id="vendorCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW 2: MASTER LEDGER TABLE ================= -->
+    <div id="panel-ledger" class="view-panel hidden space-y-4">
+      
+      <!-- Filter & Search Toolbar -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Vendor Filter -->
+          <select id="ledgerVendorSelect" onchange="setVendorFilter(this.value)"
+                  class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg px-3 py-2">
+            <!-- Populated by JS -->
+          </select>
+
+          <!-- Type Filter -->
+          <select id="ledgerTypeFilter" class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium rounded-lg px-3 py-2">
+            <option value="all">All Types (Bills & Payments)</option>
+            <option value="bills">Bills Only (Debit)</option>
+            <option value="payments">Payments Only (Credit)</option>
+          </select>
+
+          <!-- Search Input -->
+          <div class="relative min-w-[220px]">
+            <input type="text" id="ledgerSearch" placeholder="Search notes, bills, dates..."
+                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span id="ledgerCount" class="text-xs text-slate-500 font-mono hidden sm:inline">69 entries</span>
+          <button onclick="exportCSV()" class="px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Export CSV</span>
+          </button>
+          <button onclick="openRecordModal()" class="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>Add Record</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                <th class="py-3 px-3 w-12 text-slate-400">#</th>
+                <th class="py-3 px-3">Vendor Account</th>
+                <th class="py-3 px-3">Date (BS)</th>
+                <th class="py-3 px-3">Date (AD)</th>
+                <th class="py-3 px-3 text-right">Billed Amount (Dr)</th>
+                <th class="py-3 px-3 text-right">Payment (Cr)</th>
+                <th class="py-3 px-3 text-right">Due Balance</th>
+                <th class="py-3 px-3">Remarks / Notes</th>
+                <th class="py-3 px-3 text-right w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTbody" class="divide-y divide-slate-100">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW 3: SYNC & SETTINGS ================= -->
+    <div id="panel-sync" class="view-panel hidden space-y-6">
+      
+      <!-- Sheets Connection Status Card -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-2xl">
+              📊
+            </div>
+            <div>
+              <h3 class="font-bold text-base text-slate-900">Connected to Google Sheets</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Master File - Vendor Bills vs Payment</p>
+              <p class="text-[11px] font-mono text-slate-400 mt-1">Spreadsheet ID: 1zWKy_Zypr9Uday4VsqrqwSeQwTrAz5_X3Ijo8l9pJxw</p>
+            </div>
+          </div>
+          <a href="https://docs.google.com/spreadsheets/d/1zWKy_Zypr9Uday4VsqrqwSeQwTrAz5_X3Ijo8l9pJxw/edit#gid=1230991294" target="_blank"
+             class="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition flex items-center gap-1.5">
+            <span>Open in Google Sheets ↗</span>
+          </a>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="text-xs font-semibold text-slate-500">Live Dashboard Tab</div>
+            <div class="text-sm font-bold text-slate-800 mt-1">Configured & Formatted</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Includes KPI cards, table formulas & chart</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="text-xs font-semibold text-slate-500">Local Browser Storage</div>
+            <div class="text-sm font-bold text-slate-800 mt-1">Indexed & Auto-Saved</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Retains all entries even after closing browser</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="text-xs font-semibold text-slate-500">Nepali Calendar Engine</div>
+            <div class="text-sm font-bold text-emerald-600 mt-1">BS 2075 - 2090 Integrated</div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Automatic 2-way BS ↔ AD conversion</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup, Export & Reset Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Data Backup & Restore -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <h3 class="font-bold text-sm text-slate-900">Data Backup & Portability</h3>
+          <p class="text-xs text-slate-500">Safely backup your local records or restore from a previously exported JSON file.</p>
+          
+          <div class="flex items-center gap-3">
+            <button onclick="exportJSON()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Download JSON Backup</span>
+            </button>
+
+            <label class="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold transition cursor-pointer flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+              <span>Restore from Backup</span>
+              <input type="file" accept=".json" onchange="importJSON(this)" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Reset to Default -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <h3 class="font-bold text-sm text-rose-600">Restore Initial Sheet Snapshot</h3>
+          <p class="text-xs text-slate-500">Resets the local database back to the 69 initial transactions from the Google Spreadsheet.</p>
+          <button onclick="resetToDefault()" class="px-4 py-2.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold transition">
+            Reset to Google Sheet Snapshot
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ================= MODAL: RECORD BILL / PAYMENT ================= -->
+  <div id="recordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 id="modalTitle" class="font-bold text-base text-slate-900">Record Transaction</h3>
+          <p class="text-xs text-slate-500">Add an invoice bill or settlement payment to vendor ledger</p>
+        </div>
+        <button onclick="closeRecordModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">✕</button>
+      </div>
+
+      <!-- Form Content -->
+      <form onsubmit="handleSaveTransaction(event)" class="space-y-4">
+        
+        <!-- Transaction Type Switcher -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Transaction Type</label>
+          <div class="flex items-center gap-2">
+            <button type="button" id="typeBtnBill" onclick="setFormType('BILL')"
+                    class="flex-1 py-2 text-xs font-semibold rounded-lg border border-indigo-500 bg-indigo-50 text-indigo-600 shadow-xs">
+              Bill / Invoice (Dr)
+            </button>
+            <button type="button" id="typeBtnPay" onclick="setFormType('PAYMENT')"
+                    class="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-600">
+              Payment (Cr)
+            </button>
+            <button type="button" id="typeBtnBoth" onclick="setFormType('BOTH')"
+                    class="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-600">
+              Bill + Token Paid
+            </button>
+          </div>
+          <input type="hidden" id="formActiveType" value="BILL" />
+        </div>
+
+        <!-- Vendor Selection -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-semibold text-slate-600">Vendor Account</label>
+            <button type="button" onclick="openAddVendorModal()" class="text-indigo-600 text-xs hover:underline font-medium">+ Add New Vendor</button>
+          </div>
+          <select id="formVendorSelect" required
+                  class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+
+        <!-- Dual Date Inputs (BS & AD Auto-Converted) -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              Date BS (Nepali)
+              <span class="text-[10px] text-indigo-600 font-normal">YYYY/MM/DD</span>
+            </label>
+            <input type="text" id="formDateBS" placeholder="e.g. 2083/08/04" required
+                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-mono font-medium rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              Date AD (English)
+              <span class="text-[10px] text-slate-400 font-normal">Auto-Synced</span>
+            </label>
+            <input type="date" id="formDateAD" required
+                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-mono rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+          </div>
+        </div>
+
+        <!-- Amount (NPR) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (NPR)</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-400 font-bold text-xs">NPR</span>
+            <input type="number" id="formAmount" placeholder="0" step="any" min="1" required
+                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-bold font-mono rounded-xl pl-12 pr-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+          </div>
+        </div>
+
+        <!-- Partial Payment (Visible only when 'BOTH' is selected) -->
+        <div id="partialPaidRow" class="hidden">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Initial Cash / Advance Paid (Cr)</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-400 font-bold text-xs">NPR</span>
+            <input type="number" id="formPartialPaid" placeholder="0" step="any" min="0"
+                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-bold font-mono rounded-xl pl-12 pr-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+          </div>
+        </div>
+
+        <!-- Remarks / Notes -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Remarks / Invoice # / Description</label>
+          <input type="text" id="formNotes" placeholder="e.g. Bill #1042, Nov 2 Indrive shipment, Bank Transfer..."
+                 class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" />
+        </div>
+
+        <!-- Live Balance Impact Preview Box -->
+        <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between text-xs">
+          <div>
+            <span class="text-indigo-600 font-medium">Current Balance:</span>
+            <div id="previewCurDue" class="font-mono font-bold text-slate-700">NPR 0</div>
+          </div>
+          <span class="text-indigo-400 font-bold text-sm">➔</span>
+          <div class="text-right">
+            <span class="text-indigo-600 font-semibold">New Due Balance:</span>
+            <div id="previewNewDue" class="font-mono font-bold text-indigo-700 text-sm">NPR 0</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button type="button" onclick="closeRecordModal()"
+                  class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-200 transition">
+            Save Record
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" style="display:none;" class="fixed bottom-5 right-5 z-50"></div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
