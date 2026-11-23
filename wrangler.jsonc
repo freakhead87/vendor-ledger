@@ -1,7 +1,9 @@
 {
   "name": "masterfile-duevsbalance",
+  "main": "src/index.js",
   "compatibility_date": "2026-11-21",
   "assets": {
-    "directory": "./public"
+    "directory": "./public",
+    "binding": "ASSETS"
   }
 }
