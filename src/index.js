@@ -30,6 +30,8 @@ async function requireAuth(request, env) {
 
 export default {
   async fetch(request, env, ctx) {
+const authResult = await requireAuth(request, env);
+if (authResult) return authResult;
     const authResult = await requireAuth(request, env);
     if (authResult) return authResult;
 
@@ -38,6 +40,10 @@ export default {
     headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
     return new Response(assetResponse.body, {
+headers: {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'no-store',
+}
       status: assetResponse.status,
       statusText: assetResponse.statusText,
       headers,
