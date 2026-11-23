@@ -1,0 +1,24 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [ main ]   # Deploy on every push to main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'   # latest LTS
+
+      - name: Install Wrangler
+        run: npm i -g @cloudflare/wrangler
+
+      - name: Deploy to Cloudflare
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          wrangler publish
